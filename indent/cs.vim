@@ -17,19 +17,25 @@ let b:did_indent = 1
 
 setlocal indentexpr=GetCSIndent(v:lnum)
 
-function! s:IsCompilerDirective(line)
-  return a:line =~? '^\s*#'
+function! s:IsCompilerDirective(line, lnum)
+  if a:line =~? '^\s*#'
+    return 1
+  endif
+  return synIDattr(synID(a:lnum,1,1),"name") == "csPreCondit"
 endf
 
-function! s:IsAttributeLine(line)
-  return a:line =~? '^\s*\[[A-Za-z]' && a:line =~? '\]$'
+function! s:IsAttributeLine(line, lnum)
+  if a:line =~? '^\s*\[[A-Za-z]' && a:line =~? '\]$'
+    return 1
+  endif
+  return synIDattr(synID(a:lnum,1,1),"name") == "csAttribute"
 endf
 
 function! s:FindPreviousNonCompilerDirectiveLine(start_lnum)
   for delta in range(0, a:start_lnum)
     let lnum = a:start_lnum - delta
     let line = getline(lnum)
-    let is_directive = s:IsCompilerDirective(line)
+    let is_directive = s:IsCompilerDirective(line, lnum)
     if !is_directive
       return lnum
     endif
@@ -46,14 +52,14 @@ function! GetCSIndent(lnum) abort
   let this_line = getline(a:lnum)
 
   " Compiler directives use zero indent if so configured.
-  let is_first_col_macro = s:IsCompilerDirective(this_line) && stridx(&l:cinkeys, '0#') >= 0
+  let is_first_col_macro = s:IsCompilerDirective(this_line, a:lnum) && stridx(&l:cinkeys, '0#') >= 0
   if is_first_col_macro
     return cindent(a:lnum)
   endif
 
   let lnum = s:FindPreviousNonCompilerDirectiveLine(a:lnum - 1)
   let previous_code_line = getline(lnum)
-  if s:IsAttributeLine(previous_code_line)
+  if s:IsAttributeLine(previous_code_line, lnum)
     let ind = indent(lnum)
     return ind
   else
